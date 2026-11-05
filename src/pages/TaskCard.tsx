@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { supabase, Task, TaskHistory, TaskStatus, STATUS_LABELS } from '../lib/supabase'
+import { supabase, Task, TaskHistory, TaskStatus, STATUS_LABELS, Profile } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 export default function TaskCard() {
@@ -11,6 +11,11 @@ export default function TaskCard() {
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [editMode, setEditMode] = useState(false)
+  const [editTitle, setEditTitle] = useState(task?.title || '')
+  const [editDescription, setEditDescription] = useState(task?.description || '')
+  const [editAssigneeId, setEditAssigneeId] = useState(task?.assignee_id || '')
+  const [editExecutors, setEditExecutors] = useState<Profile[]>([])
 
   useEffect(() => { loadData() }, [id])
 
@@ -29,6 +34,35 @@ export default function TaskCard() {
       .order('created_at', { ascending: false })
     setHistory(h as TaskHistory[])
     setLoading(false)
+  
+    if (profile?.role === 'manager') {
+      const { data: execs } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'executor')
+        .order('full_name')
+      setEditExecutors(execs as Profile[])
+    }
+  }
+
+  // Функция сохранения
+  async function saveEdit(e: React.FormEvent) {
+    e.preventDefault()
+    const { error } = await supabase
+      .from('tasks')
+      .update({
+        title: editTitle,
+        description: editDescription || null,
+        assignee_id: editAssigneeId || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+    if (!error) {
+      setEditMode(false)
+      loadData()
+    } else {
+      alert('Ошибка: ' + error.message)
+    }
   }
 
   // Какие действия доступны текущему пользователю
@@ -90,18 +124,50 @@ export default function TaskCard() {
               {STATUS_LABELS[task.status]}
             </span>
           </div>
+          {profile?.role === 'manager' && !editMode && (
+            <button onClick={() => {
+              setEditMode(true)
+              setEditTitle(task.title)
+              setEditDescription(task.description || '')
+              setEditAssigneeId(task.assignee_id || '')
+            }}
+              style={{ padding: '6px 12px', background: '#f59e0b', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+              Редактировать
+            </button>
+          )}
         </div>
 
-        {task.description && <p style={{ color: '#444', marginTop: 12 }}>{task.description}</p>}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, fontSize: 14 }}>
-          <div><strong>Объект:</strong> {task.objects?.name}</div>
-          <div><strong>Адрес:</strong> {task.objects?.address}</div>
-          <div><strong>Исполнитель:</strong> {task.assignee?.full_name || '—'}</div>
-          <div><strong>Автор:</strong> {task.author?.full_name}</div>
-          <div><strong>Создана:</strong> {new Date(task.created_at).toLocaleString('ru-RU')}</div>
-          <div><strong>Обновлена:</strong> {new Date(task.updated_at).toLocaleString('ru-RU')}</div>
-        </div>
+        {editMode ? (
+          <form onSubmit={saveEdit} style={{ marginTop: 16, padding: 16, background: '#f9fafb', borderRadius: 6 }}>
+            <input value={editTitle} onChange={e => setEditTitle(e.target.value)} required
+              style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box' }} />
+            <textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={3}
+              style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }} />
+            <select value={editAssigneeId} onChange={e => setEditAssigneeId(e.target.value)}
+              style={{ width: '100%', padding: 8, marginBottom: 8, border: '1px solid #ccc', borderRadius: 4 }}>
+              <option value="">— Не назначен —</option>
+              {editExecutors.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}
+            </select>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setEditMode(false)}
+                style={{ padding: '8px 16px', border: '1px solid #ccc', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>Отмена</button>
+              <button type="submit"
+                style={{ padding: '8px 16px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Сохранить</button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {task.description && <p style={{ color: '#444', marginTop: 12 }}>{task.description}</p>}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, fontSize: 14 }}>
+              <div><strong>Объект:</strong> {task.objects?.name}</div>
+              <div><strong>Адрес:</strong> {task.objects?.address}</div>
+              <div><strong>Исполнитель:</strong> {task.assignee?.full_name || '—'}</div>
+              <div><strong>Автор:</strong> {task.author?.full_name}</div>
+              <div><strong>Создана:</strong> {new Date(task.created_at).toLocaleString('ru-RU')}</div>
+              <div><strong>Обновлена:</strong> {new Date(task.updated_at).toLocaleString('ru-RU')}</div>
+            </div>
+          </>
+        )}
 
         {actions.length > 0 && (
           <div style={{ marginTop: 20, padding: 16, background: '#f9fafb', borderRadius: 6 }}>
