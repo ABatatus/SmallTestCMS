@@ -17,34 +17,39 @@
 git clone https://github.com/ABatatus/SmallTestCMS.git
 cd SmallTestCMS
 npm install
-
+```
 ### 3. Настройка переменных окружения
 Откройте .env и укажите:
 ```.env
 VITE_SUPABASE_URL=https://ваш-проект.supabase.co
 VITE_SUPABASE_ANON_KEY=ваш_anon_public_ключ
-
+```
 ### 4. Настройка базы данных
-Откройте Supabase Dashboard.
-Перейдите в **SQL Editor**.
-Скопируйте весь код из файла database/setup.sql и нажмите **Run**.
-В разделе Authentication → Users создайте тестовых пользователей (например, manager@stroy.ru и worker@stroy.ru) и вручную назначьте роль manager первому через SQL:
+1. Откройте Supabase Dashboard.
+2. Перейдите в **SQL Editor**.
+3. Скопируйте весь код из файла database/setup.sql и нажмите **Run**.
+4. В разделе **Authentication → Users** создайте тестовых пользователей (например, manager@stroy.ru и worker@stroy.ru) 
+5. Вручную назначьте роль manager первому пользователю, выполнив в SQL Editor:
+```sql
 UPDATE profiles SET role = 'manager' WHERE email = 'manager@stroy.ru';
-
+```
 ### 5. Запуск проекта
 Локально выполните команду
 ```bash
 npm run dev
-
+```
 Откройте в браузере: http://localhost:5173
 
 ### Сборка для продакшена
 ```bash
 npm run build
+```
 
 Оптимизированные файлы появятся в папке dist/. Их можно задеплоить на Vercel, Netlify или любой статический хостинг.
 
+---
+
 ## 🛠️ Стек технологий
 
-**Frontend**: React 18, TypeScript, Vite, Tailwind CSS
-**Backend / DB**: Supabase (PostgreSQL, Row Level Security, Auth)
+* **Frontend**: React 18, TypeScript, Vite, Tailwind CSS
+* **Backend / DB**: Supabase (PostgreSQL, Row Level Security, Auth)
